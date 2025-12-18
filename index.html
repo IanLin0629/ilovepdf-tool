@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyPDFTool - 線上 PDF 工具</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- PDF Libraries -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- PDF.js for PDF to Image -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#e53e3e',
+                            dark: '#c53030',
+                            light: '#fed7d7'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="flex flex-col min-h-screen text-gray-700">
+
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-2 cursor-pointer" onclick="app.goHome()">
+                <i class="fa-solid fa-heart text-brand-red text-2xl"></i>
+                <span class="text-xl font-bold tracking-tight text-gray-800">My<span class="text-brand-red">PDF</span>Tool</span>
+            </div>
+            <div class="hidden md:flex space-x-6">
+                <a href="#" onclick="app.goHome()" class="hover:text-brand-red font-medium">首頁</a>
+                <a href="#" class="hover:text-brand-red font-medium text-gray-400 cursor-not-allowed" title="此為純前端演示">登入</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        
+        <!-- Home View: Grid of Tools -->
+        <div id="home-view" class="block">
+            <div class="text-center mb-12">
+                <h1 class="text-3xl md:text-4xl font-bold mb-4 text-gray-800">所有您需要的 PDF 工具</h1>
+                <p class="text-gray-600 text-lg">完全免費、易於使用，並且完全在您的瀏覽器中運行，無需上傳伺服器。</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Tool Cards will be injected here -->
+            </div>
+        </div>
+
+        <!-- Tool View: Workspace -->
+        <div id="tool-view" class="hidden max-w-6xl mx-auto">
+            <div class="mb-6 flex items-center text-sm text-gray-500">
+                <button onclick="app.goHome()" class="hover:text-brand-red mr-2"><i class="fa-solid fa-arrow-left"></i> 返回工具列表</button>
+                <span class="mx-2">/</span>
+                <span id="current-tool-name" class="font-bold text-gray-800"></span>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-8 min-h-[400px] flex flex-col items-center justify-center relative">
+                
+                <!-- Initial State: Upload -->
+                <div id="step-upload" class="w-full text-center max-w-4xl mx-auto">
+                    <div id="drop-area" class="drop-zone w-full h-64 rounded-lg flex flex-col items-center justify-center cursor-pointer bg-gray-50 group hover:bg-gray-100">
+                        <i class="fa-solid fa-cloud-arrow-up text-5xl text-gray-300 group-hover:text-brand-red mb-4 transition-colors"></i>
+                        <h3 class="text-xl font-semibold mb-2">選擇檔案</h3>
+                        <p class="text-gray-500 mb-4">或將檔案拖放到這裡</p>
+                        <button class="bg-brand-red hover:bg-brand-dark text-white font-bold py-3 px-8 rounded-lg shadow-md transition-colors">
+                            選擇 PDF 文件
+                        </button>
+                        <input type="file" id="file-input" class="hidden" multiple>
+                    </div>
+                </div>
+
+                <!-- Organizer View -->
+                <div id="step-organize" class="w-full hidden">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <div>
+                            <h3 class="text-xl font-bold">整理 PDF</h3>
+                            <p class="text-sm text-gray-500">拖曳頁面進行排序，或點擊右上角刪除頁面。</p>
+                        </div>
+                        <div class="flex gap-2">
+                             <button onclick="document.getElementById('file-input-add').click()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded shadow-sm transition-colors flex items-center">
+                                <i class="fa-solid fa-plus mr-2"></i> 增加檔案
+                            </button>
+                             <input type="file" id="file-input-add" class="hidden" multiple accept="application/pdf" onchange="app.addMoreFiles(this.files)">
+
+                            <button onclick="app.executeTool()" class="bg-brand-red hover:bg-brand-dark text-white font-bold py-2 px-6 rounded shadow-md transition-colors flex items-center">
+                                整理並下載 <i class="fa-solid fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="organizer-container" class="bg-gray-50 border rounded-lg p-4 min-h-[300px]">
+                        <div id="organizer-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            <!-- Pages will be injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Processing State: File List & Action -->
+                <div id="step-process" class="w-full hidden max-w-4xl mx-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold">已選擇的檔案</h3>
+                        <button onclick="app.reset()" class="text-sm text-red-500 hover:text-red-700">清除全部</button>
+                    </div>
+                    
+                    <ul id="file-list" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 max-h-[300px] overflow-y-auto p-2">
+                        <!-- File items injected here -->
+                    </ul>
+
+                    <div class="flex justify-center mt-6">
+                        <button id="action-btn" onclick="app.executeTool()" class="bg-brand-red hover:bg-brand-dark text-white text-xl font-bold py-4 px-12 rounded-lg shadow-lg flex items-center transition-all transform hover:scale-105">
+                            <span>開始處理</span>
+                            <i class="fa-solid fa-arrow-right ml-3"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="step-loading" class="hidden flex-col items-center">
+                    <div class="loader mb-4"></div>
+                    <p id="loading-text" class="text-lg font-medium text-gray-700">正在處理您的檔案...</p>
+                    <p class="text-sm text-gray-500">這可能需要幾秒鐘。</p>
+                </div>
+
+                <!-- Success State -->
+                <div id="step-success" class="hidden flex-col items-center text-center">
+                    <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
+                        <i class="fa-solid fa-check text-4xl text-green-500"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-2">處理完成！</h2>
+                    <p class="text-gray-600 mb-8" id="success-message">您的檔案已準備好。</p>
+                    
+                    <div class="flex space-x-4">
+                        <a id="download-link" href="#" class="bg-brand-red hover:bg-brand-dark text-white font-bold py-3 px-8 rounded-lg shadow-md flex items-center">
+                            <i class="fa-solid fa-download mr-2"></i> 下載檔案
+                        </a>
+                        <button onclick="app.reset()" class="border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 px-6 rounded-lg">
+                            處理其他檔案
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+            
+            <!-- Tool Specific Options (Restored) -->
+            <div id="tool-options" class="mt-6 bg-white p-4 rounded-lg shadow hidden">
+                <!-- Dynamic options injected here -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 mt-8">
+        <div class="container mx-auto px-4 text-center">
+            <div class="mb-4">
+                <i class="fa-solid fa-heart text-brand-red text-xl"></i>
+                <span class="font-bold text-lg">MyPDFTool</span>
+            </div>
+            <p class="text-gray-400 text-sm">© 2023 MyPDFTool Clone. 僅供教學演示使用。</p>
+            <p class="text-gray-500 text-xs mt-2">所有檔案處理均在瀏覽器本地完成，不會上傳至伺服器。</p>
+        </div>
+    </footer>
+
+    <!-- Custom Logic -->
+    <script src="script.js"></script>
+</body>
+</html>
