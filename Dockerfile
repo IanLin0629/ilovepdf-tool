@@ -1,4 +1,9 @@
-FROM nginx:alpine
-COPY index.html /usr/share/nginx/html/
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY index.html .
+
 EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+
+CMD ["python", "-m", "http.server", "8080"]
